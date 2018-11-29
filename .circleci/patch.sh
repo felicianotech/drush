@@ -6,7 +6,7 @@
 #
 # Ref. https://www.drupal.org/project/drupal/issues/2863986
 
-cd sut
+cd $HOME/project/sut
 
 # There are two versions of the patch, for 8.7.x and for 8.6.x and below.
 PATCH=https://www.drupal.org/files/issues/2863986-62.patch
