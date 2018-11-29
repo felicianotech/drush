@@ -30,6 +30,14 @@ jobs:
       - checkout
       - run: cp .docker/zz-php.ini /usr/local/etc/php/conf.d/
       - run: |
+          pwd
+          echo "==========="
+          ls -lah
+          echo "==========="
+          ls -lah $HOME
+          echo "==========="
+          ls -lah sut
+      - run: |
           if [ $PHP_VER = "5.6" ]; then
             .scenarios.lock/install php5
             .circleci/patch.sh
