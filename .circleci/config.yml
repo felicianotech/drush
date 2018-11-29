@@ -1,66 +1,45 @@
-# https://circleci.com/docs/2.0/workflows/#using-workspaces-to-share-data-among-jobs
-defaults: &defaults
-  working_directory: ~/drush
-  environment:
-    TZ: "/usr/share/zoneinfo/America/Los_Angeles"
-    TERM: dumb
-    UNISH_NO_TIMEOUTS: y
-    UNISH_DB_URL: mysql://root:@127.0.0.1
-    PHPUNIT_ARGS: ""
-
-version: 2
-jobs:
-  build:
-    <<: *defaults
-    docker:
-      - image: wodby/php:7.1
-        environment:
-          - MYSQL_HOST=127.0.0.1
-          - PHP_SENDMAIL_PATH=/dev/null
-      - image: circleci/mysql:5.7.24
-    steps:
-      - checkout
-      - run: cp .docker/zz-php.ini /usr/local/etc/php/conf.d/
-      - run: composer install
-      - run: $HOME/drush/.circleci/patch.sh
-      - run: composer functional
-
-  build_highest:
-    <<: *defaults
-    docker:
-      - image: wodby/php:7.2
-        environment:
-          - MYSQL_HOST=127.0.0.1
-          - PHP_SENDMAIL_PATH=/dev/null
-      - image: circleci/mysql:5.7.24
-    steps:
-      - checkout
-      - run: cp .docker/zz-php.ini /usr/local/etc/php/conf.d/
-      - run: composer remove --dev webflo/drupal-core-strict --no-update
-      - run: composer require --dev drupal/core:8.7.x-dev --no-update
-      - run: composer config platform.php 7.2
-      - run: composer install
-      - run: composer functional
-
-  build_56:
-    <<: *defaults
-    docker:
-      - image: wodby/php:5.6
-        environment:
-          - MYSQL_HOST=127.0.0.1
-          - PHP_SENDMAIL_PATH=/dev/null
-      - image: circleci/mysql:5.7.24
-    steps:
-      - checkout
-      - run: cp .docker/zz-php.ini /usr/local/etc/php/conf.d/
-      - run: .scenarios.lock/install php5
-      - run: $HOME/drush/.circleci/patch.sh
-      - run: composer functional
-
+version: 2.1
 workflows:
-  version: 2
   build_test:
     jobs:
-      - build
-      - build_highest
-      - build_56
+      - build:
+          version: "5.6"
+      - build:
+          version: "7.1"
+      - build:
+          version: "7.2"
+jobs:
+  build:
+    parameters:
+      version:
+        type: string
+    environment:
+      PHPUNIT_ARGS: ""
+      TERM: dumb
+      TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+      UNISH_DB_URL: mysql://root:@127.0.0.1
+      UNISH_NO_TIMEOUTS: y
+      PHP_VER: << parameters.version >>
+    docker:
+      - image: wodby/php:<< parameters.version >>
+        environment:
+          - MYSQL_HOST=127.0.0.1
+          - PHP_SENDMAIL_PATH=/dev/null
+      - image: circleci/mysql:5.7.24
+    steps:
+      - checkout
+      - run: cp .docker/zz-php.ini /usr/local/etc/php/conf.d/
+      - run: |
+          if [ $PHP_VER = "5.6" ]; then
+            .scenarios.lock/install php5
+            .circleci/patch.sh
+          elif [ $PHP_VER = "7.1" ]; then
+            .circleci/patch.sh
+            composer install
+          elif [ $PHP_VER = "7.2" ]; then
+            composer remove --dev webflo/drupal-core-strict --no-update
+            composer require --dev drupal/core:8.7.x-dev --no-update
+            composer config platform.php 7.2
+            composer install
+          fi
+      - run: composer functional
